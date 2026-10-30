@@ -3,7 +3,7 @@
 
 #include "cs3113.h"
 
-enum Direction { LEFT, UP, RIGHT, DOWN }; // For walking
+enum Direction {LEFT, UP, RIGHT, DOWN};
 enum EntityStatus {ACTIVE, INACTIVE};
 
 class Entity
@@ -37,7 +37,6 @@ private:
     EntityStatus mEntityStatus = ACTIVE;
 
     void animate(float deltaTime);
-    bool isColliding(Entity *other) const;
     
     void checkCollisionX(Entity *collidableEntities, int entityCount);
     void checkCollisionY(Entity *collidableEntities, int entityCount);
@@ -91,6 +90,7 @@ public:
     bool isActive()   const { return mEntityStatus == ACTIVE; }
     void activate()         { mEntityStatus = ACTIVE;   }
     void deactivate()       { mEntityStatus = INACTIVE; }
+    bool isColliding(Entity *other) const;
     
 
     std::map<Direction, std::vector<int>> getAnimationAtlas() const { return mAnimationAtlas; }
