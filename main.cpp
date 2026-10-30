@@ -21,7 +21,7 @@ constexpr Vector2 ORIGIN      = { SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
 constexpr float ACCELERATION_OF_GRAVITY = 40.0f;
 
 //Balloon variables
-constexpr char    BALLOON_FP[]     = "assets/balloon.png";
+constexpr char    BALLOON_FP[]     = "assets/game/balloon.png";
 constexpr Vector2 BALLOON_SIZE     = { 60.0f, 77.0f },
                   BALLOON_INIT_POS = { ORIGIN.x, 80.0f };
 
