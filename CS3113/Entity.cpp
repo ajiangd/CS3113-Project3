@@ -136,8 +136,9 @@ void Entity::update(float deltaTime, Entity *collidableEntities, int entityCount
     mPosition.y += mVelocity.y * deltaTime;
     checkCollisionY(collidableEntities, entityCount);
 
-    if (mTextureType == ATLAS && GetLength(mMovement) != 0)
+    if (mTextureType == ATLAS){
         animate(deltaTime);
+    }
 }
 
 void Entity::render()

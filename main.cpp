@@ -70,10 +70,13 @@ constexpr float   RAFT_Y = WATER_LINE - 5.0f,
                     RAFT_RANGE = 150.0f,
                     RAFT_SPEED = 0.4f;
 
+constexpr char    FLAME_FP[] = "assets/game/flame.png";
+constexpr Vector2 FLAME_SIZE = {18.0f, 32.0f},
+                  FLAME_OFFSET = {0.0f, 12.0f},
+                  FLAME_SPRITESHEET_DIMENSIONS = {2, 5};  
+
 // Landing
 constexpr int   NUMBER_OF_PLATFORMS = 2;
-// constexpr float MAX_LANDING_SPEED_Y = 100.0f,
-//                 MAX_LANDING_SPEED_X = 80.0f;
 
 // Messages
 constexpr char  MISSION_ACC_FP[] = "assets/game/missionacc.png",
@@ -95,6 +98,7 @@ Entity *gSky = nullptr;
 Entity *gWater = nullptr;
 Entity *gIsland = nullptr;
 Entity *gRaft = nullptr;
+Entity *gFlame = nullptr;
 
 float gRaftTime = 0.0f;
 float gRaftVelocityX = 0.0f;
@@ -113,7 +117,6 @@ void shutdown();
 void renderFuel();
 void restrictBalloon();
 void checkMissionStatus();
-// bool isSafeLanding(Entity *platform, float platformVelocityX);
 
 void initialise()
 {
@@ -121,8 +124,20 @@ void initialise()
 
     gBalloon = new Entity(BALLOON_INIT_POS, BALLOON_SIZE, BALLOON_FP);
     gBalloon->setColliderDimensions({BALLOON_SIZE.x * 0.5f, BALLOON_SIZE.y});
-
     gBalloon->setAcceleration({0.0f, ACCELERATION_OF_GRAVITY});
+
+    std::map<Direction, std::vector<int>> flameAtlas = {
+        { RIGHT, { 0, 1, 2, 3, 4, 5, 6, 7 } }
+    };
+
+    gFlame = new Entity(
+        BALLOON_INIT_POS,  
+        FLAME_SIZE, 
+        FLAME_FP,    
+        ATLAS,  
+        FLAME_SPRITESHEET_DIMENSIONS, 
+        flameAtlas
+    );
 
     gDigitsTexture = LoadTexture(FUEL_DIGITS_FP);
     gFuelLabelTexture = LoadTexture(FUEL_LABEL_FP);
@@ -204,14 +219,18 @@ void update()
 
     restrictBalloon();
 
+    Vector2 balloonPosition = gBalloon->getPosition();
+    gFlame->setPosition({
+        balloonPosition.x + FLAME_OFFSET.x,
+        balloonPosition.y + FLAME_OFFSET.y
+    });
+    gFlame->update(deltaTime, nullptr, 0);
+
     gRaftTime += deltaTime;
     float raftX = RAFT_CENTER_X + RAFT_RANGE * sin(RAFT_SPEED * gRaftTime);
 
-    // gRaftVelocityX = (raftX - gRaft->getPosition().x) / deltaTime;
-
     gRaft->setPosition({raftX, RAFT_Y});
     checkMissionStatus();
-
 }
 
 void restrictBalloon(){
@@ -239,17 +258,6 @@ void restrictBalloon(){
     gBalloon->setPosition(position);
     gBalloon->setVelocity(velocity);
 }
-
-// bool isSafeLanding(Entity *platform, float platformVelocityX)
-// {
-//     Vector2 velocity = gBalloon->getVelocity();
-
-//     bool fromAbove  = gBalloon->getPosition().y < platform->getPosition().y;
-//     bool slowEnough = velocity.y <= MAX_LANDING_SPEED_Y &&
-//                       fabs(velocity.x - platformVelocityX) <= MAX_LANDING_SPEED_X;
-
-//     return fromAbove && slowEnough;
-// }
 
 
 void checkMissionStatus(){
@@ -313,7 +321,6 @@ void renderFuel(){
 
         DrawTexturePro(gDigitsTexture, digitTextureArea, digitDestinationArea, originOffset, 0.0f, tint);
     }
-
 }
 
 void render()
@@ -326,10 +333,20 @@ void render()
     gIsland->render();
     gRaft->render();
     gBalloon->render();
+
+    if (gIsBurning && gGameStatus == PLAYING){
+        gFlame->render();
+    }
+
     renderFuel();
 
-    if (gGameStatus == MISSION_ACCOMPLISHED) gMissionAcc->render();
-    else if (gGameStatus == MISSION_FAILED) gMissionFail->render();
+    if (gGameStatus == MISSION_ACCOMPLISHED) {
+        gMissionAcc->render();
+    }
+
+    else if (gGameStatus == MISSION_FAILED){
+        gMissionFail->render();
+    }
 
     EndDrawing();
 }
@@ -343,6 +360,7 @@ void shutdown()
     delete gRaft;
     delete gMissionAcc;
     delete gMissionFail;
+    delete gFlame;
     UnloadTexture(gDigitsTexture);
     UnloadTexture(gFuelLabelTexture);
     CloseWindow();
