@@ -18,7 +18,7 @@ constexpr int SCREEN_WIDTH  = 1000,
 constexpr char    BG_COLOUR[] = "#87CEEB";
 constexpr Vector2 ORIGIN      = { SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
 
-constexpr float ACCELERATION_OF_GRAVITY = 40.0f,
+constexpr float ACCELERATION_OF_GRAVITY = 20.0f,
                 BURNER_ACCELERATION = 100.0f,
                 VENT_ACCELERATION = 80.0f,
                 AIR_DRAG = 1.5f;
@@ -43,6 +43,30 @@ constexpr Vector2 FUEL_IND_POS = { 20.0f, 20.0f },
             FUEL_LABEL_SIZE = { 84.0f, 30.0f },
             DIGIT_SIZE = { 21.0f, 30.0f };
 
+// Sky variables
+constexpr char SKY_FP[] = "assets/game/sky.png";
+constexpr Vector2 SKY_SIZE = {SCREEN_WIDTH, SCREEN_HEIGHT};
+
+// Water varaibles
+constexpr char WATER_FP[] = "assets/game/water.png";
+constexpr Vector2 WATER_SIZE = {SCREEN_WIDTH, 140.0f},
+                    WATER_POS = {ORIGIN.x, SCREEN_HEIGHT-WATER_SIZE.y / 2.0f};
+constexpr float   WATER_LINE = SCREEN_HEIGHT - WATER_SIZE.y;
+
+// Island variables
+constexpr char ISLAND_FP[] = "assets/game/island.png";
+constexpr Vector2 ISLAND_SIZE = { 200.0f, 128.0f},
+                    ISLAND_POS      = { 820.0f, WATER_LINE },
+                    ISLAND_COLLIDER = {120.0f, 10.0f};
+
+// Raft
+constexpr char RAFT_FP[] = "assets/game/raft.png";
+constexpr Vector2 RAFT_SIZE = { 120.0f, 53.0f },
+                    RAFT_COLLIDER = { 100.0f, 20.0f };
+constexpr float   RAFT_Y = WATER_LINE - 5.0f,
+                    RAFT_CENTER_X = 380.0f,
+                    RAFT_RANGE = 200.0f,
+                    RAFT_SPEED = 0.6f;
 
 // Global Variables
 AppStatus gAppStatus     = RUNNING;
@@ -54,6 +78,12 @@ Texture2D gDigitsTexture;
 Texture2D gFuelLabelTexture;
 
 Entity *gBalloon = nullptr;
+Entity *gSky = nullptr;
+Entity *gWater = nullptr;
+Entity *gIsland = nullptr;
+Entity *gRaft = nullptr;
+
+float gRaftTime = 0.0f;
 
 // Function Declarations
 void initialise();
@@ -62,7 +92,7 @@ void update();
 void render();
 void shutdown();
 void renderFuel();
-
+void restrictBalloon();
 
 void initialise()
 {
@@ -73,6 +103,15 @@ void initialise()
 
     gDigitsTexture = LoadTexture(FUEL_DIGITS_FP);
     gFuelLabelTexture = LoadTexture(FUEL_LABEL_FP);
+
+    gSky = new Entity(ORIGIN, SKY_SIZE, SKY_FP);
+    gWater = new Entity(WATER_POS, WATER_SIZE, WATER_FP);
+
+    gIsland = new Entity(ISLAND_POS, ISLAND_SIZE, ISLAND_FP);
+    gIsland->setColliderDimensions(ISLAND_COLLIDER);
+    
+    gRaft = new Entity({RAFT_CENTER_X, RAFT_Y}, RAFT_SIZE, RAFT_FP);
+    gRaft->setColliderDimensions(RAFT_COLLIDER);
 
     SetTargetFPS(FPS);
 }
@@ -119,6 +158,39 @@ void update()
     if (gIsBurning) gFuel -= BURNER_FUEL_RATE * deltaTime;
     if (gIsVenting) gFuel -= VENT_FUEL_RATE * deltaTime;
     if (gFuel < 0.0f) gFuel = 0.0f;
+
+    restrictBalloon();
+
+    gRaftTime += deltaTime;
+    float raftX = RAFT_CENTER_X + RAFT_RANGE * sin(RAFT_SPEED * gRaftTime);
+    gRaft->setPosition({raftX, RAFT_Y});
+
+}
+
+void restrictBalloon(){
+    Vector2 position = gBalloon->getPosition();
+    Vector2 velocity = gBalloon->getVelocity();
+
+    float halfWidth = BALLOON_SIZE.x / 2.0f;
+    float halfHeight = BALLOON_SIZE.y / 2.0f;
+
+    if (position.x - halfWidth < 0.0f){
+        position.x = halfWidth;
+        velocity.x = 0.0f;
+    }
+
+    if (position.x + halfWidth > SCREEN_WIDTH){
+        position.x = SCREEN_WIDTH-halfWidth;
+        velocity.x = 0.0f;
+    }
+
+    if (position.y - halfHeight < 0.0f){
+        position.y = halfHeight;
+        velocity.y = 0.0f;
+    }
+
+    gBalloon->setPosition(position);
+    gBalloon->setVelocity(velocity);
 }
 
 void renderFuel(){
@@ -167,6 +239,10 @@ void render()
     BeginDrawing();
     ClearBackground(ColorFromHex(BG_COLOUR));
 
+    gSky->render();
+    gWater->render();
+    gIsland->render();
+    gRaft->render();
     gBalloon->render();
     renderFuel();
 
@@ -176,6 +252,10 @@ void render()
 void shutdown()
 {
     delete gBalloon;
+    delete gSky;
+    delete gWater;
+    delete gIsland;
+    delete gRaft;
     UnloadTexture(gDigitsTexture);
     UnloadTexture(gFuelLabelTexture);
     CloseWindow();

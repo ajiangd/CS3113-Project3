@@ -115,6 +115,8 @@ public:
         { mFrameSpeed = newSpeed;                  }
     void setAngle(float newAngle)
         { mAngle = newAngle;                       }
+    void setVelocity(Vector2 newVelocity)
+    { mVelocity = newVelocity;                 }
 };
 
 #endif // ENTITY_H
