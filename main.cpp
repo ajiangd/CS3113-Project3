@@ -18,7 +18,10 @@ constexpr int SCREEN_WIDTH  = 1000,
 constexpr char    BG_COLOUR[] = "#87CEEB";
 constexpr Vector2 ORIGIN      = { SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
 
-constexpr float ACCELERATION_OF_GRAVITY = 40.0f;
+constexpr float ACCELERATION_OF_GRAVITY = 40.0f,
+                BURNER_ACCELERATION = 100.0f,
+                VENT_ACCELERATION = 80.0f,
+                AIR_DRAG = 1.5f;
 
 //Balloon variables
 constexpr char    BALLOON_FP[]     = "assets/game/balloon.png";
@@ -53,6 +56,17 @@ void initialise()
 
 void processInput()
 {
+    Vector2 acceleration = { 0.0f, ACCELERATION_OF_GRAVITY };
+
+    if (IsKeyDown(KEY_W) || IsKeyDown(KEY_SPACE))
+        acceleration.y -= BURNER_ACCELERATION;
+
+    if      (IsKeyDown(KEY_A)) acceleration.x = -VENT_ACCELERATION;
+    else if (IsKeyDown(KEY_D)) acceleration.x =  VENT_ACCELERATION;
+    else
+        acceleration.x = -gBalloon->getVelocity().x * AIR_DRAG;
+
+    gBalloon->setAcceleration(acceleration);
     if (IsKeyPressed(KEY_Q) || WindowShouldClose()) gAppStatus = TERMINATED;
 }
 
