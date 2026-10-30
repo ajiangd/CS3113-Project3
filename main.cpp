@@ -28,9 +28,30 @@ constexpr char    BALLOON_FP[]     = "assets/game/balloon.png";
 constexpr Vector2 BALLOON_SIZE     = { 60.0f, 77.0f },
                   BALLOON_INIT_POS = { ORIGIN.x, 80.0f };
 
+//Fuel variables
+constexpr char FUEL_DIGITS_FP[] = "assets/game/digits.png",
+            FUEL_LABEL_FP[]   = "assets/game/fuel_label.png",
+            FUEL_LOW_COLOUR[] = "#FF5252";
+constexpr int FUEL_DIGIT_COUNT = 4,
+            DIGITS_COLS = 10;
+constexpr float MAX_FUEL = 1000.0f,
+            BURNER_FUEL_RATE = 120.0f,
+            VENT_FUEL_RATE  = 60.0f,
+            LOW_FUEL = 250.0f,
+            FUEL_LABEL_GAP = 12.0f;
+constexpr Vector2 FUEL_IND_POS = { 20.0f, 20.0f },
+            FUEL_LABEL_SIZE = { 84.0f, 30.0f },
+            DIGIT_SIZE = { 21.0f, 30.0f };
+
+
 // Global Variables
 AppStatus gAppStatus     = RUNNING;
 float     gPreviousTicks = 0.0f;
+float gFuel = MAX_FUEL;
+bool gIsBurning = false,
+        gIsVenting = false;
+Texture2D gDigitsTexture;
+Texture2D gFuelLabelTexture;
 
 Entity *gBalloon = nullptr;
 
@@ -40,16 +61,18 @@ void processInput();
 void update();
 void render();
 void shutdown();
+void renderFuel();
+
 
 void initialise()
 {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Hot Air Balloon Lander");
 
-    /*
-        ----------- BALLOON -----------
-    */
     gBalloon = new Entity(BALLOON_INIT_POS, BALLOON_SIZE, BALLOON_FP);
     gBalloon->setAcceleration({ 0.0f, ACCELERATION_OF_GRAVITY });
+
+    gDigitsTexture = LoadTexture(FUEL_DIGITS_FP);
+    gFuelLabelTexture = LoadTexture(FUEL_LABEL_FP);
 
     SetTargetFPS(FPS);
 }
@@ -58,13 +81,28 @@ void processInput()
 {
     Vector2 acceleration = { 0.0f, ACCELERATION_OF_GRAVITY };
 
-    if (IsKeyDown(KEY_W) || IsKeyDown(KEY_SPACE))
-        acceleration.y -= BURNER_ACCELERATION;
+    gIsBurning = false;
+    gIsVenting = false;
 
-    if      (IsKeyDown(KEY_A)) acceleration.x = -VENT_ACCELERATION;
-    else if (IsKeyDown(KEY_D)) acceleration.x =  VENT_ACCELERATION;
-    else
+    bool fuelFull = gFuel > 0.0f;
+
+    if (fuelFull && (IsKeyDown(KEY_W) || IsKeyDown(KEY_SPACE))){
+        acceleration.y -= BURNER_ACCELERATION;
+        gIsBurning = true;
+    }
+        
+    if (fuelFull && IsKeyDown(KEY_A)){
+        acceleration.x = -VENT_ACCELERATION;
+        gIsVenting = true;
+    } 
+
+    else if (fuelFull && IsKeyDown(KEY_D)){
+        acceleration.x =  VENT_ACCELERATION;
+        gIsVenting = true;
+    }
+    else{
         acceleration.x = -gBalloon->getVelocity().x * AIR_DRAG;
+    }
 
     gBalloon->setAcceleration(acceleration);
     if (IsKeyPressed(KEY_Q) || WindowShouldClose()) gAppStatus = TERMINATED;
@@ -77,6 +115,51 @@ void update()
     gPreviousTicks  = ticks;
 
     gBalloon->update(deltaTime, nullptr, 0);
+
+    if (gIsBurning) gFuel -= BURNER_FUEL_RATE * deltaTime;
+    if (gIsVenting) gFuel -= VENT_FUEL_RATE * deltaTime;
+    if (gFuel < 0.0f) gFuel = 0.0f;
+}
+
+void renderFuel(){
+    Vector2 originOffset = {0.0f, 0.0f};
+
+    Color tint = WHITE;
+    if (gFuel < LOW_FUEL){
+        tint = ColorFromHex(FUEL_LOW_COLOUR);
+    } 
+
+    Rectangle labelTextureArea = {
+        0.0f, 0.0f,
+        static_cast<float>(gFuelLabelTexture.width),
+        static_cast<float>(gFuelLabelTexture.height),
+    };
+
+
+    Rectangle labelDestinationArea = {
+        FUEL_IND_POS.x, FUEL_IND_POS.y,
+        FUEL_LABEL_SIZE.x, FUEL_LABEL_SIZE.y
+    };
+
+    DrawTexturePro(gFuelLabelTexture, labelTextureArea, labelDestinationArea, originOffset, 0.0f, tint);
+    
+    int fuel = static_cast<int>(gFuel);
+    int divisor = 1000;
+    float digitsX = FUEL_IND_POS.x + FUEL_LABEL_SIZE.x + FUEL_LABEL_GAP;
+
+    for (int i = 0; i < FUEL_DIGIT_COUNT; i++){
+        int digit = (fuel/divisor) % 10;
+        divisor /= 10;
+        
+        Rectangle digitTextureArea = getUVRectangle(&gDigitsTexture, digit, 1, DIGITS_COLS);
+
+        Rectangle digitDestinationArea = {
+            digitsX + i * DIGIT_SIZE.x, FUEL_IND_POS.y, DIGIT_SIZE.x, DIGIT_SIZE.y
+        };
+
+        DrawTexturePro(gDigitsTexture, digitTextureArea, digitDestinationArea, originOffset, 0.0f, tint);
+    }
+
 }
 
 void render()
@@ -85,6 +168,7 @@ void render()
     ClearBackground(ColorFromHex(BG_COLOUR));
 
     gBalloon->render();
+    renderFuel();
 
     EndDrawing();
 }
@@ -92,6 +176,8 @@ void render()
 void shutdown()
 {
     delete gBalloon;
+    UnloadTexture(gDigitsTexture);
+    UnloadTexture(gFuelLabelTexture);
     CloseWindow();
 }
 
